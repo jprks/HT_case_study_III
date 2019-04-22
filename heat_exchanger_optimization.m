@@ -5,6 +5,8 @@
     Purpose: The purpose of this script is to optimize the design of a
     cross-flow unmixed heat exchanger.
 %}
+clc
+clear
 
 %% Given
 effect = 0.75; % [-] - Effectiveness of Heat Exchanger
@@ -34,7 +36,39 @@ q_max = C*(T_hi - T_ci); % [W] - Maximum heat transfer
 q_actual = effect*q_max; % [W] - Actual heat transfer
 
 % find NTU by numerical iteration of Eqn. 11.32 pg. 664
+error = 1;
+inc = 0.001;
+i = 1;
+x_guess_1 = 1;
+x_guess_2 = 1.5;
 
+x_sol_1 = NTU_correlation(x_guess_1);
+x_sol_2 = NTU_correlation(x_guess_2);
+
+del_E_1 = abs(effect - x_sol_1);
+del_E_2 = abs(effect - x_sol_2);
+x_old = [x_guess_1 x_guess_2];
+
+while error > 0.001 && i < 500000   
+    if del_E_1 < del_E_2                % if the delta got larger as x went from 1 to 1.5
+        x_new = x_old(i,1) - inc;
+        TF = 0;
+    else                                % if the delta got larger as x went from 1.5 to 1
+        x_new = x_old(i,2) + inc;
+        TF = 1;
+    end
+    
+    x_sol_new(i,1) = NTU_correlation(x_new);
+    error = abs(effect - x_sol_new(i,1));
+    i = i + 1;
+    if TF == 0
+        x_old(i,1) = x_new;
+    else
+        x_old(i,2) = x_new;
+    end
+end
+
+NTU = x_new - inc;
 
 for n = 2:2:10
     sep_d = n*h_core; % [m] - Separation distance of the HX plates
@@ -76,7 +110,7 @@ A = (l_core*h_core*w_core)/d;
 end
 
 function x_ntu = NTU_correlation(x)
-x_ntu = 1 - exp(x^0.22-(exp(-x^0.78-1)));
+x_ntu = 1 - exp(x^0.22*(exp(-x^0.78)-1));
 end
 
 
